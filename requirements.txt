@@ -1,0 +1,15 @@
+# The server itself
+fastapi>=0.110
+uvicorn>=0.29
+pydantic>=2.6
+httpx>=0.27
+numpy>=1.26
+opencv-python>=4.8
+
+# Detection models for the fast loop (YOLO11 + pose). Large (pulls in PyTorch).
+# Works without it: python run.py --detector none, or switch the video source to "Simulated" in the UI.
+ultralytics>=8.3
+
+# For running the tests
+# (newer starlette's test client suggests httpx2: installing it silences the notice, the tests run either way)
+pytest>=8
