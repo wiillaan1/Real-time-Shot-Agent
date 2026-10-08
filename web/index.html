@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Shooting Agent</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<main class="desk">
+
+  <!-- Left: the monitor. Everything live is on this side: the picture, the fast loop's hint, the roll button, the current shot's constraints.
+       Top to bottom: shot title / picture / result of the last take / hint + roll / constraint list. The first four always fit on one screen (fitViewport in main.js). -->
+  <section class="monitor" id="monitor" aria-label="Monitor">
+    <header class="monitor-top" id="monitor-top">
+      <div class="now">
+        <p class="now-id" id="shot-id"></p>
+        <h1 class="now-title" id="shot-title">Connecting to the server</h1>
+        <p class="now-brief" id="shot-brief"></p>
+      </div>
+      <div class="rig">
+        <label class="rig-source">Video source
+          <select id="source-select">
+            <option value="webcam">Webcam</option>
+            <option value="sim">Simulated</option>
+          </select>
+        </label>
+        <p class="rig-line" id="rig-line"></p>
+        <label class="mock" id="mock" hidden>
+          <input type="checkbox" id="mock-fail"> Make the mock fail the next take
+        </label>
+      </div>
+    </header>
+
+    <div class="viewport" id="viewport">
+      <video id="video" autoplay playsinline muted></video>
+      <img id="sim-image" alt="Simulated picture: a schematic table, bag and person" hidden>
+      <canvas id="overlay" aria-hidden="true"></canvas>
+      <p class="rec" id="rec" hidden><span class="rec-dot"></span><span id="rec-text"></span></p>
+      <div class="veil" id="veil" hidden>
+        <p class="veil-line">Checking: stay where you are</p>
+      </div>
+      <div class="viewport-message" id="viewport-message" hidden>
+        <p id="viewport-message-text"></p>
+        <button type="button" class="btn" id="btn-use-sim">Use the simulated picture</button>
+      </div>
+    </div>
+
+    <!-- Result of the last take; the current phase when there is none yet. This row is always there, so the layout does not jump when it appears or goes -->
+    <p class="notice" id="notice" data-kind="status"></p>
+
+    <!-- Hint and action sit together: one verdict line on the left with three kinds of small print under it: "ledger" guidance derived from the ledger,
+         "self-check" requirements that cannot be checked automatically, "note" when the picture disagrees with the ledger; the roll button on the right turns green when the framing passes -->
+    <div class="cue" id="cue" data-level="info">
+      <div class="cue-text" aria-live="polite">
+        <p class="cue-line" id="cue-line">Waiting for a picture</p>
+        <ul class="cue-list" id="briefing"></ul>
+        <ul class="cue-list" id="self-checks"></ul>
+        <ul class="cue-list cue-notes" id="notes"></ul>
+      </div>
+      <div class="cue-action">
+        <button type="button" class="btn btn-take" id="btn-take" disabled>Roll</button>
+        <p class="take-hint">or press Space</p>
+      </div>
+    </div>
+
+    <ul class="checks" id="checks" aria-label="Constraints of the current shot"></ul>
+
+    <fieldset class="sim" id="sim-panel" hidden>
+      <legend>What is in the simulated picture</legend>
+      <label class="sim-row"><input type="checkbox" id="sim-table" checked> Table in the picture</label>
+      <label class="sim-row"><input type="checkbox" id="sim-bag-on" checked> Bag, position
+        <input type="range" id="sim-bag" min="0" max="1" step="0.05" value="0.2" aria-label="Position of the bag along the table">
+      </label>
+      <label class="sim-row"><input type="checkbox" id="sim-bag-under" checked> Bag under the table (unticked: on top of it)</label>
+      <label class="sim-row"><input type="checkbox" id="sim-person-on"> Person, position
+        <input type="range" id="sim-person" min="0.08" max="0.92" step="0.02" value="0.4" aria-label="Position of the person in the picture">
+      </label>
+      <label class="sim-row">Person faces
+        <select id="sim-facing">
+          <option value="left">Frame left</option>
+          <option value="front" selected>The camera</option>
+          <option value="right">Frame right</option>
+        </select>
+      </label>
+      <label class="sim-row">Camera pitch
+        <input type="range" id="sim-pitch" min="0" max="60" step="5" value="0" aria-label="Camera pitch">
+        <output id="sim-pitch-out">0°</output>
+      </label>
+    </fieldset>
+  </section>
+
+  <!-- Right: the ledger. Everything written down is on this side: shot log, scene state, write log, each entry with its source -->
+  <aside class="ledger" aria-label="Shot ledger">
+    <header class="ledger-head">
+      <div>
+        <h2 class="ledger-title">Shot ledger</h2>
+        <p class="ledger-style" id="ledger-style"></p>
+        <p class="ledger-synopsis" id="ledger-synopsis" hidden></p>
+      </div>
+      <div class="ledger-tally">
+        <p class="tally-boxes" id="tally-boxes" aria-hidden="true"></p>
+        <p class="tally-text" id="tally-text"></p>
+        <button type="button" class="btn-quiet" id="btn-reset">Start over</button>
+      </div>
+    </header>
+
+    <!-- Change the script: write an idea or paste a script; the planner has the model break it into shots with checkable constraints. Collapsed by default -->
+    <details class="script" id="script">
+      <summary>Change the script</summary>
+      <label class="script-label" for="script-text">What do you want to film? Write an idea, or paste a finished script</label>
+      <textarea id="script-text" rows="4" maxlength="4000"
+        placeholder="e.g. Someone working late goes to get water and comes back to find a book on the desk that is not theirs"></textarea>
+      <div class="script-actions">
+        <button type="button" class="btn-paper" id="btn-plan">Write the shot list</button>
+        <button type="button" class="btn-quiet" id="btn-example">Back to the example list</button>
+      </div>
+      <p class="script-status" id="script-status" aria-live="polite"></p>
+    </details>
+
+    <ol class="shots" id="shots"></ol>
+
+    <h3 class="ledger-section">Scene state</h3>
+    <ul class="facts" id="facts"></ul>
+
+    <h3 class="ledger-section">Write log</h3>
+    <ol class="log" id="log"></ol>
+  </aside>
+
+</main>
+<script type="module" src="/static/js/main.js"></script>
+</body>
+</html>

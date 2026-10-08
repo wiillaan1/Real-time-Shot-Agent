@@ -1,0 +1,301 @@
+/* Two materials for the two loops:
+     the left is a monitor (dark, glowing): what is live, the picture and the fast loop's hints
+     the right is ledger paper (pale green ruled paper): what is written down, by the slow loop and the planner
+   Source tags are rubber stamps, one ink colour per source. Only system fonts are used, so a venue without network changes nothing. */
+
+:root {
+  --housing: #1f2326;
+  --housing-raised: #2b3035;
+  --housing-line: #3a4046;
+  --screen-text: #f1f3ee;
+  --screen-dim: #a3aba4;
+  --tally: #e5484d;        /* recording */
+  --cue: #f5b82e;          /* needs adjusting */
+  --clear: #57c794;        /* ready to shoot */
+
+  --paper: #e6eddf;
+  --paper-shade: #d9e3d0;
+  --paper-rule: #bccdb5;
+  --paper-margin: #d48a8a;
+  --print: #2a302b;        /* text "printed" on the form: the plan */
+  --print-dim: #5d6a5f;
+  --ink: #1d3557;          /* text "written" in: conclusions the loops wrote */
+  --ink-pass: #1f7a4d;
+  --ink-fail: #b42318;
+
+  --stamp-plan: #3d5a80;
+  --stamp-yolo: #0f766e;
+  --stamp-cosmos: #6d3fa6;
+  --stamp-sensor: #8a5a14;
+
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--housing);
+  color: var(--screen-text);
+  font: 15px/1.5 var(--font);
+  font-variant-numeric: tabular-nums;
+}
+h1, h2, h3, p, ul, ol { margin: 0; padding: 0; }
+ul, ol { list-style: none; }
+button, select, input { font: inherit; color: inherit; }
+[hidden] { display: none !important; }
+:focus-visible { outline: 2px solid var(--cue); outline-offset: 2px; }
+
+.desk { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(340px, 1fr); height: 100vh; }
+
+/* ───────────── Monitor ───────────── */
+
+.monitor { padding: 20px 24px 28px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+.monitor > * { flex-shrink: 0; }   /* when there is too much content this column scrolls; the picture is never squashed */
+
+.monitor-top { display: flex; justify-content: space-between; gap: 24px; align-items: flex-start; }
+.now-id { color: var(--screen-dim); font-size: 13px; }
+.now-title { font-size: 24px; font-weight: 600; line-height: 1.3; }
+/* What to film and why. Capped at four lines so a long description cannot push the picture down; the full text is in the tooltip */
+.now-brief { color: var(--screen-dim); max-width: 46em; margin-top: 2px;
+             display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; line-clamp: 4; overflow: hidden; }
+
+.rig { text-align: right; flex-shrink: 0; font-size: 13px; color: var(--screen-dim); }
+.rig-source select {
+  margin-left: 6px; padding: 4px 8px; border-radius: 4px;
+  background: var(--housing-raised); border: 1px solid var(--housing-line); color: var(--screen-text);
+}
+.rig-line { margin-top: 6px; max-width: 34em; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 2px 14px; }
+.rig-line span { white-space: nowrap; }
+.rig-line .rig-note { white-space: normal; color: var(--cue); }
+.mock { margin-top: 6px; display: flex; gap: 6px; align-items: center; justify-content: flex-end; }
+
+/* The picture's height --stage-h is computed by fitViewport() in main.js so that title, picture, hint and roll button fit on one screen.
+   Only the width is set here, from it and the aspect ratio --aspect; the height follows from aspect-ratio, so the frame and the video
+   always share one ratio and the detection boxes drawn on top line up. */
+.viewport {
+  position: relative; align-self: center; width: 100%;
+  max-width: calc(var(--stage-h, 46vh) * var(--aspect, 1.7778));
+  aspect-ratio: var(--aspect, 1.7778);
+  background: #000; border-radius: 6px; overflow: hidden;
+  outline: 1px solid var(--housing-line);
+}
+.viewport[data-phase="recording"] { outline: 2px solid var(--tally); }
+.viewport video, .viewport img, .viewport canvas {
+  position: absolute; inset: 0; width: 100%; height: 100%; display: block; object-fit: contain;
+}
+.viewport canvas { pointer-events: none; }
+
+.rec {
+  position: absolute; top: 12px; left: 12px; display: flex; align-items: center; gap: 8px;
+  padding: 4px 10px; border-radius: 4px; background: rgba(0, 0, 0, 0.62); font-weight: 600;
+}
+.rec-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--tally); animation: blink 1s steps(2, start) infinite; }
+@keyframes blink { to { visibility: hidden; } }
+
+.veil {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 6px; background: rgba(20, 23, 25, 0.72); text-align: center; padding: 16px;
+}
+.veil-line { font-size: clamp(20px, 2.4vw, 30px); font-weight: 600; }
+
+.viewport-message {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 12px; padding: 24px; text-align: center; background: var(--housing-raised);
+}
+
+/* Result of the last take. The current phase (status) is shown when there is none yet, so this row always keeps its place */
+.notice { padding: 8px 12px; border-radius: 4px; border-left: 4px solid; background: var(--housing-raised); }
+.notice[data-kind="status"] { border-color: var(--housing-line); color: var(--screen-dim); }
+.notice[data-kind="pass"] { border-color: var(--clear); }
+.notice[data-kind="fail"], .notice[data-kind="error"] { border-color: var(--tally); }
+.notice[data-kind="info"] { border-color: var(--cue); }
+
+/* The hint: the one line in the whole UI that must be seen, readable from across the room. The roll button sits next to it: read the hint, the action is at hand */
+.cue {
+  display: flex; gap: 18px; align-items: flex-start;
+  padding: 12px 16px; border-radius: 6px; background: var(--housing-raised); border-left: 6px solid var(--screen-dim);
+}
+.cue[data-level="fix"] { border-color: var(--cue); }
+.cue[data-level="ok"] { border-color: var(--clear); }
+.cue-text { flex: 1; min-width: 0; }
+.cue-action { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+/* This line always reserves two lines of height, so the picture and the list below do not jump when the hint goes between one line and two */
+.cue-line {
+  font-size: clamp(19px, 1.75vw, 26px); font-weight: 600; line-height: 1.3;
+  min-height: 2.7em; display: flex; align-items: center;
+}
+.cue[data-level="fix"] .cue-line { color: var(--cue); }
+.cue[data-level="ok"] .cue-line { color: var(--clear); }
+.cue-list { margin-top: 8px; display: grid; gap: 4px; }
+.cue-list:empty { display: none; }
+.cue-list li { display: flex; gap: 8px; align-items: baseline; }
+/* Each line of small print under the hint starts with a tag saying where it comes from */
+.from-ledger, .self-check, .heads-up {
+  flex-shrink: 0; padding: 0 6px; border-radius: 3px; font-size: 12px; font-weight: 600;
+}
+.from-ledger { background: var(--paper); color: var(--print); }                      /* derived from the ledger */
+.self-check { border: 1px solid var(--screen-dim); color: var(--screen-dim); }       /* cannot be checked automatically, the user confirms */
+.heads-up { border: 1px solid var(--cue); color: var(--cue); }                       /* the picture disagrees with the ledger */
+.cue-notes li { color: var(--cue); font-size: 14px; }
+
+.checks { display: grid; gap: 2px; }
+.check {
+  display: grid; grid-template-columns: 24px minmax(0, 1fr) auto auto; gap: 10px; align-items: baseline;
+  padding: 5px 8px; border-radius: 4px;
+}
+.check + .check { border-top: 1px solid var(--housing-line); }
+.check-mark { font-weight: 700; text-align: center; }
+.check[data-state="ok"] .check-mark { color: var(--clear); }
+.check[data-state="violated"] .check-mark, .check[data-state="unknown"] .check-mark { color: var(--cue); }
+.check[data-state="degraded"] .check-mark, .check[data-state="pending"] .check-mark,
+.check[data-state="idle"] .check-mark { color: var(--screen-dim); }
+.check-side { color: var(--screen-dim); font-size: 13px; text-align: right; }
+.check-who {
+  font-size: 12px; font-weight: 600; padding: 0 6px; border: 1px solid var(--housing-line); border-radius: 3px;
+  color: var(--screen-dim); white-space: nowrap;
+}
+
+.btn {
+  padding: 8px 18px; border-radius: 5px; border: 1px solid var(--housing-line);
+  background: var(--housing-raised); cursor: pointer;
+}
+.btn:disabled { opacity: 0.45; cursor: default; }
+.btn-take { min-width: 132px; padding: 12px 26px; font-size: 18px; font-weight: 600; }
+.btn-take[data-mode="ready"] { background: var(--clear); border-color: var(--clear); color: #10241a; }
+.btn-take[data-mode="recording"] { background: var(--tally); border-color: var(--tally); color: #fff; }
+.take-hint { color: var(--screen-dim); font-size: 12px; }
+
+.sim { border: 1px dashed var(--housing-line); border-radius: 6px; padding: 10px 14px; display: grid; gap: 6px 24px;
+       grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); font-size: 14px; }
+.sim legend { padding: 0 6px; color: var(--screen-dim); font-size: 13px; }
+.sim-row { display: flex; align-items: center; gap: 8px; }
+.sim-row input[type="range"] { flex: 1; min-width: 80px; accent-color: var(--paper); }
+.sim-row select { background: var(--housing-raised); border: 1px solid var(--housing-line); border-radius: 4px; padding: 2px 6px; }
+
+/* ───────────── Ledger ───────────── */
+
+.ledger {
+  --margin: 58px;   /* the margin left of the red line: shot numbers go here */
+  position: relative; overflow-y: auto; padding: 20px 22px 40px 0;
+  background: var(--paper); color: var(--print);
+}
+.ledger::before {   /* the ledger paper's red margin line */
+  content: ""; position: absolute; top: 0; bottom: 0; left: var(--margin); width: 1px;
+  background: var(--paper-margin); min-height: 100%;
+}
+.ledger > * { margin-left: calc(var(--margin) + 14px); }
+
+.ledger-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; padding-bottom: 12px;
+               border-bottom: 2px solid var(--print); }
+.ledger-title { font-size: 22px; font-weight: 700; letter-spacing: 0.04em; }
+.ledger-style { color: var(--print-dim); font-size: 14px; }
+.ledger-tally { text-align: right; flex-shrink: 0; white-space: nowrap; }
+.tally-boxes { font-size: 20px; letter-spacing: 4px; line-height: 1; color: var(--ink-pass); }
+.tally-text { font-size: 13px; color: var(--print-dim); margin-top: 4px; }
+.btn-quiet { margin-top: 4px; padding: 0; border: 0; background: none; cursor: pointer; font-size: 13px;
+             color: var(--print-dim); text-decoration: underline; text-underline-offset: 3px; }
+.btn-quiet:hover { color: var(--print); }
+.cancel-reshoot { margin: 0 0 0 10px; font-weight: 400; }
+
+.ledger-synopsis { margin-top: 6px; font-size: 14px; color: var(--ink); max-width: 34em; }
+
+/* Change the script: a note clipped to the ledger paper. One line normally, the input appears when opened */
+.script { margin-top: 10px; font-size: 14px; }
+.script summary { cursor: pointer; color: var(--print-dim); text-decoration: underline; text-underline-offset: 3px;
+                  list-style: none; width: fit-content; font-size: 13px; }
+.script summary::-webkit-details-marker { display: none; }
+.script summary:hover { color: var(--print); }
+.script[open] summary { margin-bottom: 8px; }
+.script-label { display: block; margin-bottom: 4px; color: var(--print-dim); font-size: 13px; }
+.script textarea { display: block; width: 100%; resize: vertical; padding: 8px 10px; line-height: 1.5;
+                   background: #f4f8ef; color: var(--ink); border: 1px solid var(--paper-rule); border-radius: 4px; }
+.script textarea:disabled { opacity: 0.6; }
+.script-actions { display: flex; align-items: center; gap: 16px; margin-top: 8px; }
+.btn-paper { padding: 6px 16px; border-radius: 4px; border: 1px solid var(--print); background: var(--print);
+             color: var(--paper); cursor: pointer; }
+.btn-paper:disabled { opacity: 0.45; cursor: default; }
+.script-actions .btn-quiet { margin-top: 0; }
+.script-status { margin-top: 6px; font-size: 13px; color: var(--print-dim); }
+.script-status:empty { display: none; }
+.script-status[data-kind="error"] { color: var(--ink-fail); }
+.ledger :focus-visible { outline-color: var(--ink); }
+
+.ledger-section { margin-top: 22px; padding-bottom: 4px; font-size: 14px; font-weight: 700;
+                  border-bottom: 2px solid var(--print); }
+
+.shot { position: relative; padding: 10px 0 12px; border-bottom: 1px solid var(--paper-rule); }
+.shot-id {   /* written in the margin left of the red line */
+  position: absolute; left: calc(-1 * var(--margin) - 14px); width: var(--margin); top: 10px;
+  text-align: center; font-weight: 700; color: var(--print);
+}
+.shot[data-current="true"] { background: linear-gradient(to right, transparent, var(--paper-shade) 12%); }
+.shot[data-current="true"] .shot-id::after { content: "▸"; position: absolute; right: 4px; color: var(--ink-fail); }
+.shot-head { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+.shot-title { font-size: 16px; font-weight: 600; }
+.shot-setup { font-size: 13px; color: var(--print-dim); font-weight: 400; margin-left: 6px; }
+.shot-status { font-size: 14px; font-weight: 700; white-space: nowrap; }
+.shot-status[data-status="passed"] { color: var(--ink-pass); }
+.shot-status[data-status="retake"] { color: var(--ink-fail); }
+.shot-status[data-status="todo"] { color: var(--print-dim); font-weight: 400; }
+
+.take-line { display: flex; align-items: center; gap: 10px; margin-top: 6px; color: var(--ink); font-size: 14px; flex-wrap: wrap; }
+.take-id { padding: 1px 9px; font-weight: 700; }
+.take-id[data-kept="true"] {   /* the take the script supervisor circled: the kept one */
+  border: 1.5px solid var(--ink-fail); border-radius: 50%; transform: rotate(-3deg); color: var(--ink);
+}
+.take-id[data-kept="false"] { text-decoration: line-through; color: var(--ink-fail); }
+.take-thumb { width: 64px; height: 36px; object-fit: cover; border: 1px solid var(--paper-rule); border-radius: 2px; }
+.take-note { color: var(--ink); font-size: 14px; margin-top: 4px; }
+.retake { margin-left: auto; }
+
+.verdicts { margin-top: 6px; display: grid; gap: 2px; }
+.verdict { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 6px; align-items: baseline;
+           font-size: 13.5px; color: var(--ink); }
+.verdict-mark[data-passed="true"] { color: var(--ink-pass); font-weight: 700; }
+.verdict-mark[data-passed="false"] { color: var(--ink-fail); font-weight: 700; }
+.verdict-mark[data-passed="null"] { color: var(--print-dim); }
+.verdict-detail { color: var(--print-dim); }
+
+/* Source stamps */
+.stamp { display: inline-block; padding: 0 6px; border: 1.5px solid currentColor; border-radius: 3px;
+         font-size: 12px; font-weight: 700; line-height: 1.5; white-space: nowrap; }
+.stamp[data-source="plan"] { color: var(--stamp-plan); }
+.stamp[data-source="yolo"] { color: var(--stamp-yolo); }
+.stamp[data-source="cosmos"] { color: var(--stamp-cosmos); }
+.stamp[data-source="sensor"] { color: var(--stamp-sensor); }
+
+.fact { display: grid; grid-template-columns: 9.5em minmax(0, 1fr) auto; gap: 8px; align-items: baseline;
+        padding: 7px 0; border-bottom: 1px solid var(--paper-rule); }
+.fact-key { font-weight: 600; }
+.fact-value { color: var(--ink); }
+.fact-trace { display: block; font-size: 12.5px; color: var(--print-dim); }
+.fact-confirm { color: var(--ink-fail); font-weight: 700; }
+.empty { padding: 8px 0; color: var(--print-dim); font-size: 14px; border-bottom: 1px solid var(--paper-rule); }
+
+.log-entry { display: grid; grid-template-columns: 2.6em 5.2em minmax(0, 1fr); gap: 8px; padding: 4px 0;
+             font-size: 13px; border-bottom: 1px solid var(--paper-rule); color: var(--ink); }
+.log-entry[data-applied="false"] { color: var(--print-dim); }
+.log-version, .log-writer { color: var(--print-dim); }
+.log-note { color: var(--print-dim); }
+
+/* A line just written in the ledger flashes once, so a demo audience sees the moment it was written */
+.fresh { animation: written 1.6s ease-out; }
+@keyframes written { from { background-color: #fff6b3; } to { background-color: transparent; } }
+
+@media (max-width: 900px) {
+  .desk { grid-template-columns: 1fr; height: auto; }
+  .monitor, .ledger { overflow: visible; }
+  .monitor { padding: 16px; }
+  .monitor-top { flex-direction: column; gap: 10px; }
+  .rig { text-align: left; }
+  .rig-line { justify-content: flex-start; }
+  .viewport { max-width: 100%; }   /* narrow screens scroll the whole page and the picture takes the full width (fitViewport does nothing here) */
+  .mock { justify-content: flex-start; }
+  .cue { flex-direction: column; }
+  .cue-action { flex-direction: row; gap: 12px; }
+  .cue-line { min-height: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rec-dot, .fresh { animation: none; }
+}
